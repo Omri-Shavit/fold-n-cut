@@ -5,11 +5,12 @@ import '@fortawesome/fontawesome-free/css/all.min.css';
 interface LeftPanelProps {
   selectedTool: string;
   setSelectedTool: (tool: string) => void;
+  vertexCount: number;
 }
 
 const hotkeyMap = {
-  "add-vertex": "Q",
-  "move-vertex": "W",
+  "add-vertex": "A",
+  "move-vertex": "S",
   "add-edge": "E",
   "undo": "Ctrl+Z",
   "redo": "Ctrl+Shift+Z"
@@ -74,9 +75,11 @@ const verticesRow = (
 }
 
 const edgesRow = (
-  { selectedTool, setSelectedTool }: 
-  { selectedTool: string, setSelectedTool: (tool: string) => void }
+  { selectedTool, setSelectedTool, vertexCount }: 
+  { selectedTool: string, setSelectedTool: (tool: string) => void, vertexCount: number }
 ) => {
+  const disabled = vertexCount < 2;
+  
   return (
     <div className="button-row">
       <div className="button-label">Edges</div>
@@ -89,13 +92,19 @@ const edgesRow = (
           value="add-edge"
           checked={selectedTool === "add-edge"}
           onChange={() => setSelectedTool("add-edge")}
+          disabled={disabled}
         />
-        <label className="btn tooltip-container" htmlFor="add-edge">
+        <label 
+          className={`btn tooltip-container ${disabled ? "disabled" : ""}`} 
+          htmlFor="add-edge"
+        >
           <i className="fa-solid fa-plus"></i>
           <span className="tooltip">
             Add Edge
             <br />
             <strong>Hotkey: {hotkeyMap["add-edge"]}</strong>
+            {disabled && <br />}
+            {disabled && <span>Need at least 2 vertices</span>}
           </span>
         </label>
       </div>
@@ -129,7 +138,7 @@ const undoRedoRow = () => {
 }
 
 const LeftPanel: React.FC<LeftPanelProps> = (
-  { selectedTool, setSelectedTool }
+  { selectedTool, setSelectedTool, vertexCount }
 ) => {
   const [panelCollapsed, setPanelCollapsed] = useState(false);
 
@@ -171,7 +180,7 @@ const LeftPanel: React.FC<LeftPanelProps> = (
           setSelectedTool("add-vertex");
         } else if (key === hotkeyMap["move-vertex"].toUpperCase()) {
           setSelectedTool("move-vertex");
-        } else if (key === hotkeyMap["add-edge"].toUpperCase()) {
+        } else if (key === hotkeyMap["add-edge"].toUpperCase() && vertexCount >= 2) {
           setSelectedTool("add-edge");
         }
       }
@@ -184,14 +193,14 @@ const LeftPanel: React.FC<LeftPanelProps> = (
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [setSelectedTool]); // Only re-run if setSelectedTool changes
+  }, [setSelectedTool, vertexCount]); // Add vertexCount to dependencies
   
   return (
     <div className="container">
       <div className={`side-panel ${panelCollapsed ? "collapsed" : ""}`} id="sidePanel">
         {undoRedoRow()}
         {verticesRow({ selectedTool, setSelectedTool })}
-        {edgesRow({ selectedTool, setSelectedTool })}
+        {edgesRow({ selectedTool, setSelectedTool, vertexCount })}
       </div>
       {!panelCollapsed ? (
         <button 

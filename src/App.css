@@ -165,6 +165,18 @@ footer {
   transition: background-color 0.15s ease-in-out;
 }
 
+/* Add these styles for disabled buttons */
+.btn.disabled {
+  background-color: #e9ecef;
+  color: #6c757d;
+  border-color: #ced4da;
+}
+
+/* Make sure the tooltip still shows even when button is disabled */
+.btn.disabled .tooltip {
+  pointer-events: none;
+}
+
 .btn:hover {
   background-color: #3a7bc8;
 }
@@ -223,6 +235,19 @@ html, body, #root {
   white-space: nowrap;
   pointer-events: none;
   font-size: 0.8rem;
+}
+
+/* For tooltips in the top section of the sidebar, adjust positioning */
+.button-row:first-child .tooltip {
+  bottom: auto;
+  top: 125%;
+}
+
+/* Adjust the arrow for tooltips that appear below the button */
+.button-row:first-child .tooltip::after {
+  top: auto;
+  bottom: 100%;
+  border-color: transparent transparent #555 transparent;
 }
 
 /* Right-positioned tooltip for panel toggle buttons */

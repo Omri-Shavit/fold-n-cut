@@ -1,6 +1,6 @@
 ### Main todos
- - [ ] Buttons
-	- [ ] Implement the Add Edge button
+ - [x] Buttons
+	- [x] Implement the Add Edge button
 	- [x] Implement move vertex button
 	- [x] Make the tool Buttons radio. The current equipped tool can be one of the following:
 		- Add vertex
