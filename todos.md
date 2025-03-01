@@ -1,13 +1,14 @@
 ### Main todos
  - [ ] Buttons
 	- [ ] Implement the Add Edge button
-	- [ ] Make the tool Buttons radio. The current equipped tool can be one of the following:
+	- [ ] Implement move vertex button
+	- [x] Make the tool Buttons radio. The current equipped tool can be one of the following:
 		- Add vertex
 		- Move vertex
 		- Add edge
 		- Potentially more tools
-	- [ ] Add Tool Tips to buttons
-	- [ ] Add hotkeys (most if not all on the left hand so the user can use mouse only)
+	- [x] Add Tool Tips to buttons
+	- [x] Add hotkeys (most if not all on the left hand so the user can use mouse only)
 - [ ] Implement `constructStraightSkeleton()`
 - [ ] Implement error warnings like the one seen in Oriedita
 	-  Top right text reads 0 errors in green if there are none or {n} errors in red if there are {n} errors

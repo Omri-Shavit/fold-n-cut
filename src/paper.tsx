@@ -1,14 +1,31 @@
 import React from 'react';
 
-type Vertex = {
+class Vertex {
+  static radius: number = 0.005;
+  static color: string = "black";
+
   x: number;
   y: number;
-};
+  color: string;
 
-const PAPER_BORDER_WIDTH: number = 0.01;
-const VERTEX_RADIUS: number = 0.005;
+  constructor(x: number, y: number, color=Vertex.color) {
+    this.x = x;
+    this.y = y;
+    this.color = color;
+  }
 
-export const Paper: React.FC = () => {
+  render(){
+    return (<circle 
+      cx={this.x}
+      cy={this.y}
+      r={Vertex.radius}
+      fill={this.color}
+    />);
+  }
+}
+
+export const Paper: React.FC<{ selectedTool: string }> = ({ selectedTool }) => {
+  const PAPER_BORDER_WIDTH: number = 0.01;
   const [vertices, setVertices] = React.useState<Vertex[]>([]);
 
   function getClickCoordinates(e: React.MouseEvent<SVGSVGElement>) {
@@ -19,20 +36,23 @@ export const Paper: React.FC = () => {
   }
 
   const addVertex = (x: number, y: number) => {
-    const newVertex = { x, y };
+    const newVertex = new Vertex(x, y);
     setVertices(prev => [...prev, newVertex]);
   };
 
   const removeNearbyVertices = (x: number, y: number) => {
     setVertices(prev => 
-      prev.filter(v => Math.hypot(v.x - x, v.y - y) > 1.1 * VERTEX_RADIUS)
+      prev.filter(v => Math.hypot(v.x - x, v.y - y) > 1.1 * Vertex.radius)
     );
   };
 
   const handleClick = (e: React.MouseEvent<SVGSVGElement>) => {
-    if (e.button === 0) { // Left click = add
+    console.log(`current tool selected: ${selectedTool}`);
+    if (e.button === 0) { // Left click
       const { x, y } = getClickCoordinates(e);
-      addVertex(x, y);
+      if (selectedTool === "add-vertex") {
+        addVertex(x, y);
+      }
     }
   };
 
@@ -55,14 +75,8 @@ export const Paper: React.FC = () => {
   };
 
   const renderVertices = () => {
-    return vertices.map((vertex, index) => (
-      <circle 
-        key={index}
-        cx={vertex.x}
-        cy={vertex.y}
-        r={VERTEX_RADIUS}
-        fill="black"
-      />
+    return vertices.map((vertex) => (
+      vertex.render()
     ));
   };
   
