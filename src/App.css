@@ -1,0 +1,140 @@
+body {
+  font-family: Arial, sans-serif;
+  background-color: #e0e0e0; /* Light gray background */
+}
+
+header {
+  background-color: #4a90e2;
+  color: white;
+  text-align: center;
+  padding: 1rem;
+  font-size: 1.5rem;
+}
+
+.container {
+  display: flex;
+  flex: 1; /* This makes the container take up all available space */
+  position: relative; /* For absolute positioning of main content */
+}
+
+.side-panel {
+  background-color: #c0c0c0; /* Darker gray background for side panel */
+  width: 250px;
+  padding: 1rem;
+  z-index: 1;
+  transition: width 0.3s ease, opacity 0.3s ease;
+  position: relative; /* For the toggle button positioning */
+}
+
+.side-panel.collapsed {
+  width: 0;
+  padding: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.hide-panel {
+  position: absolute;
+  top: 10px;
+  right: -30px;
+  background-color: #c0c0c0; /* Match panel background color */
+  color: #333;
+  border: none;
+  border-radius: 0 4px 4px 0;
+  padding: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 40px;
+  z-index: 2;
+  transition: opacity 0.3s ease;
+  box-shadow: 2px 0 4px rgba(0,0,0,0.1);
+}
+
+.show-panel {
+  position: absolute;
+  top: 10px;
+  left: 0;
+  background-color: #c0c0c0; /* Match panel background color */
+  color: #333;
+  border: none;
+  border-radius: 0 4px 4px 0;
+  padding: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 40px;
+  z-index: 2;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.show-panel.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.button-row {
+  margin-bottom: 1rem;
+  background-color: #d8d8d8;
+  border-radius: 8px;
+  padding: 0.8rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.button-label {
+  font-weight: bold;
+  margin-bottom: 0.8rem;
+  text-align: center;
+}
+
+.buttons {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+button {
+  padding: 0.5rem 1rem;
+  background-color: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+button:hover {
+  background-color: #3a7bc8;
+}
+
+.main-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none; /* Allow clicks to pass through to elements below */
+}
+
+#paper{
+  width: 80vmin;
+  height: 80vmin;
+  pointer-events: auto; /* Re-enable interactions for the SVG */
+}
+
+footer {
+  background-color: #333;
+  color: white;
+  text-align: center;
+  padding: 1rem;
+  font-size: 0.9rem;
+}
