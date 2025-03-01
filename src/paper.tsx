@@ -9,7 +9,6 @@ const PAPER_BORDER_WIDTH: number = 0.01;
 const VERTEX_RADIUS: number = 0.005;
 
 export const Paper: React.FC = () => {
-  const svgRef = React.useRef<SVGSVGElement | null>(null);
   const [vertices, setVertices] = React.useState<Vertex[]>([]);
 
   function getClickCoordinates(e: React.MouseEvent<SVGSVGElement>) {
@@ -71,7 +70,6 @@ export const Paper: React.FC = () => {
   return (
     <svg 
       id="paper"
-      ref={svgRef}
       width="80vmin"
       height="80vmin"
       viewBox="0 0 1 1"
