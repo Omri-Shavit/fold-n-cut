@@ -26,14 +26,15 @@ const footer = (
 
 const App: React.FC = () => {
     // state shared between components
-    const [selectedTool, setSelectedTool] = useState<string>("add-vertex");
     const [vertices, setVertices] = useState<Vertex[]>([]);
+    const [edges, setEdges] = useState<Edge[]>([]);
+    const [selectedTool, setSelectedTool] = useState<string>("add-vertex");
     const [errorInfo, setErrorInfo] = useState<ErrorInfo>({
         viewErrorIndicator: true,
         lowDegreeVertices: [] as Vertex[],
         intersectingEdges: [] as Edge[][]
     });
-
+    
     return (
         <div className="app">
             {header}
@@ -44,13 +45,12 @@ const App: React.FC = () => {
                 selectedTool={selectedTool} setSelectedTool={setSelectedTool}
                 vertexCount={vertices.length}
             />
-            <div className="main-content" id="mainContent">
-                <Paper
-                    selectedTool={selectedTool}
-                    vertices={vertices} setVertices={setVertices}
-                    errorInfo={errorInfo} setErrorInfo={setErrorInfo}
-                />
-            </div>
+            <Paper
+                selectedTool={selectedTool}
+                vertices={vertices} setVertices={setVertices}
+                edges={edges} setEdges={setEdges}
+                errorInfo={errorInfo} setErrorInfo={setErrorInfo}
+            />
             {footer}
         </div>
     );

@@ -1,17 +1,10 @@
 import React, { useState, useEffect } from "react";
 import '@fortawesome/fontawesome-free/css/all.min.css';
 
-// Define the global interface for LeftPanelProps
-interface LeftPanelProps {
-    selectedTool: string;
-    setSelectedTool: (tool: string) => void;
-    vertexCount: number;
-}
-
 const hotkeyMap = {
     "add-vertex": "A",
     "move-vertex": "S",
-    "add-edge": "E",
+    "add-edge": "Space",
     "undo": "Ctrl+Z",
     "redo": "Ctrl+Shift+Z"
 };
@@ -137,6 +130,12 @@ const undoRedoRow = () => {
     );
 }
 
+interface LeftPanelProps {
+    selectedTool: string;
+    setSelectedTool: (tool: string) => void;
+    vertexCount: number;
+}
+
 const LeftPanel: React.FC<LeftPanelProps> = (
     { selectedTool, setSelectedTool, vertexCount }
 ) => {
@@ -163,7 +162,7 @@ const LeftPanel: React.FC<LeftPanelProps> = (
                 return;
             }
 
-            // Handle Ctrl+Shift+Z for redo (changed from Ctrl+Y)
+            // Handle Ctrl+Shift+Z for redo
             if (e.ctrlKey && e.shiftKey && key === 'Z') {
                 e.preventDefault();
                 redo();
@@ -180,7 +179,7 @@ const LeftPanel: React.FC<LeftPanelProps> = (
                     setSelectedTool("add-vertex");
                 } else if (key === hotkeyMap["move-vertex"].toUpperCase()) {
                     setSelectedTool("move-vertex");
-                } else if (key === hotkeyMap["add-edge"].toUpperCase() && vertexCount >= 2) {
+                } else if (key === ' ' && vertexCount >= 2) { // Check for spacebar
                     setSelectedTool("add-edge");
                 }
             }

@@ -35,31 +35,37 @@ export type Edge = {
 }
 
 /**
+ * Props for the Paper component
+ */
+type PaperProps = {
+    selectedTool: string, 
+    vertices: Vertex[], 
+    setVertices: React.Dispatch<React.SetStateAction<Vertex[]>>,
+    edges: Edge[],
+    setEdges: React.Dispatch<React.SetStateAction<Edge[]>>,
+    errorInfo: ErrorInfo,
+    setErrorInfo: React.Dispatch<React.SetStateAction<ErrorInfo>>
+}
+
+/**
  * The main component for the paper.
  * @param selectedTool - The tool that is currently selected.
  * @returns The paper component.
  */
-export const Paper: React.FC<{
-    selectedTool: string, 
-    vertices: Vertex[], 
-    setVertices: React.Dispatch<React.SetStateAction<Vertex[]>>,
-    errorInfo: ErrorInfo,
-    setErrorInfo: React.Dispatch<React.SetStateAction<ErrorInfo>>
-}> = (
-    { selectedTool, vertices, setVertices, errorInfo, setErrorInfo }: { 
-        selectedTool: string, 
-        vertices: Vertex[], 
-        setVertices: React.Dispatch<React.SetStateAction<Vertex[]>>,
-        errorInfo: ErrorInfo,
-        setErrorInfo: React.Dispatch<React.SetStateAction<ErrorInfo>>
-    }
-) => {
+export const Paper: React.FC<PaperProps> = ({
+    selectedTool, 
+    vertices, 
+    setVertices, 
+    edges, 
+    setEdges, 
+    errorInfo, 
+    setErrorInfo
+}) => {
     // Constants TODO: maybe make these variable some increase/decrease buttons
     const PAPER_BORDER_WIDTH: number = 0.01;
     const EDGE_WIDTH: number = 0.005;
     const VERTEX_RADIUS = 0.005;
     
-    const [edges, setEdges] = React.useState<Edge[]>([] as Edge[]);
     const [draggingVertex, setDraggingVertex] = React.useState<dragVertexState>(
         {vertex: null, offsetX: 0, offsetY: 0}
     );
@@ -641,29 +647,31 @@ export const Paper: React.FC<{
     };
 
     return (
-        <svg 
-            id="paper"
-            width="80vmin"
-            height="80vmin"
-            viewBox="0 0 1 1"
-            onClick={handleClick}
-            onContextMenu={handleContextMenu}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-        >
-            <rect 
-                width="1" 
-                height="1" 
-                fill="white" 
-                stroke="black" 
-                strokeWidth={PAPER_BORDER_WIDTH} 
-            />
-            {renderLowDegreeVerticesWarning()}
-            {renderIntersectingEdgesWarning()}
-            {renderEdges()}
-            {renderPreviewEdge()}
-            {renderVertices()}
-        </svg>
+        <div className="main-content" id="mainContent">
+            <svg 
+                id="paper"
+                width="80vmin"
+                height="80vmin"
+                viewBox="0 0 1 1"
+                onClick={handleClick}
+                onContextMenu={handleContextMenu}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+            >
+                <rect 
+                    width="1" 
+                    height="1" 
+                    fill="white" 
+                    stroke="black" 
+                    strokeWidth={PAPER_BORDER_WIDTH} 
+                />
+                {renderLowDegreeVerticesWarning()}
+                {renderIntersectingEdgesWarning()}
+                {renderEdges()}
+                {renderPreviewEdge()}
+                {renderVertices()}
+            </svg>  
+        </div>
     );
 };
