@@ -9,7 +9,6 @@ import { ErrorInfo } from './ErrorIndicator';
 export type Vertex = {
     x: number;
     y: number;
-    id: number;
     incidentEdges: Edge[];
     neighboringVertices: Vertex[];
     selected: boolean;
@@ -72,7 +71,6 @@ export const Paper: React.FC<PaperProps> = ({
     const [firstEndpoint, setFirstEndpoint] = React.useState<Vertex | null>(
         null
     );
-    const [vertexIdCounter, setVertexIdCounter] = React.useState<number>(0);
     const [pointerPosition, setPointerPosition] = React.useState<
         {x: number, y: number}
     >({x: 0, y: 0}); // for edge preview (maybe this isn't needed...)
@@ -99,13 +97,11 @@ export const Paper: React.FC<PaperProps> = ({
         const newVertex: Vertex = {
             x,
             y,
-            id: vertexIdCounter,
             incidentEdges: [],
             neighboringVertices: [],
             selected: false
         };
         setVertices(prev => [...prev, newVertex]);
-        setVertexIdCounter(prev => prev + 1);
     };
 
     /**
@@ -310,7 +306,7 @@ export const Paper: React.FC<PaperProps> = ({
      * @returns The vertices rendered on the paper.
      */
     const renderVertices = () => {
-        return vertices.map((vertex: Vertex) => {
+        return vertices.map((vertex: Vertex, index: number) => {
             // When we're hovering over a vertex, change cursor according to 
             // the selected tool.
             //     - move-vertex => double arrow
@@ -324,7 +320,7 @@ export const Paper: React.FC<PaperProps> = ({
 
             return (
                 <circle
-                    key={vertex.id}
+                    key={index}
                     cx={vertex.x}
                     cy={vertex.y}
                     r={VERTEX_RADIUS}
@@ -342,7 +338,6 @@ export const Paper: React.FC<PaperProps> = ({
      */
     const renderEdges = () => {
         return edges.map((edge: Edge) => (<line 
-            key={`${edge.endpoint1.id},${edge.endpoint2.id}`} 
             x1={edge.endpoint1.x}
             y1={edge.endpoint1.y} 
             x2={edge.endpoint2.x} 
@@ -478,18 +473,14 @@ export const Paper: React.FC<PaperProps> = ({
             
             // Find new intersections for this edge
             const newIntersections: Edge[][] = [];
-            const edgeId = Math.min(edge.endpoint1.id, edge.endpoint2.id);
-            
-            for (const otherEdge of edges){
+            const edgeIdx = edges.indexOf(edge);
+
+            for (let otherEdgeIdx = 0; otherEdgeIdx < edges.length; otherEdgeIdx++){
+                const otherEdge = edges[otherEdgeIdx];
                 if (otherEdge === edge) continue;
                 if (!theseEdgesIntersect(edge, otherEdge)) continue;
                 
-                const otherEdgeId = Math.min(
-                    otherEdge.endpoint1.id, 
-                    otherEdge.endpoint2.id
-                );
-                
-                const intersectingEdgePair = (edgeId < otherEdgeId) ? 
+                const intersectingEdgePair = (edgeIdx < otherEdgeIdx) ? 
                     [edge, otherEdge] : [otherEdge, edge];
                     
                 newIntersections.push(intersectingEdgePair);
@@ -583,7 +574,6 @@ export const Paper: React.FC<PaperProps> = ({
                     
                     return (
                         <polygon
-                            key={`warning-${vertex.id}`}
                             points={points}
                             fill="red"
                             opacity="0.7"
@@ -605,7 +595,7 @@ export const Paper: React.FC<PaperProps> = ({
         
         return (
             <>
-                {errorInfo.intersectingEdges.map((edgePair, index) => {
+                {errorInfo.intersectingEdges.map((edgePair) => {
                     // Get the coordinates of the two edges
                     const [edge1, edge2] = edgePair;
                     const [x1, y1] = [edge1.endpoint1.x, edge1.endpoint1.y];
@@ -622,7 +612,7 @@ export const Paper: React.FC<PaperProps> = ({
                     
                     // Return an X mark at the intersection point
                     return (
-                        <g key={`intersection-${index}`}>
+                        <g>
                             <line 
                                 x1={intersectionX - xSize/2} 
                                 y1={intersectionY - xSize/2}
