@@ -302,3 +302,12 @@ html, body, #root {
   margin-left: 0;
   border-color: transparent #555 transparent transparent;
 }
+
+.error-indicator {
+  position: absolute;
+  top: 80px; /* Position below the header */
+  left: 75%;
+  padding: 5px 10px;
+  border-radius: 4px;
+  z-index: 100;
+}

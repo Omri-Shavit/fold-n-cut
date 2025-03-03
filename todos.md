@@ -9,7 +9,7 @@
 		- Potentially more tools
 	- [x] Add Tool Tips to buttons
 	- [x] Add hotkeys (most if not all on the left hand so the user can use mouse only)
-- [ ] Implement error warnings like the one seen in Oriedita
+- [x] Implement error warnings like the one seen in Oriedita
 	-  Top right text reads 0 errors in green OR {n} errors in red (if there are n>0 errors)
 	-  Types of errors include:
 		- Vertices that don't have degree 2

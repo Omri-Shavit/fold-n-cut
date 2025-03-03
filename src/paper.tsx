@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-
+import { ErrorInfo } from './ErrorIndicator';
 export type Vertex = {
     x: number;
     y: number;
@@ -42,12 +42,16 @@ export type Edge = {
 export const Paper: React.FC<{
     selectedTool: string, 
     vertices: Vertex[], 
-    setVertices: React.Dispatch<React.SetStateAction<Vertex[]>> 
+    setVertices: React.Dispatch<React.SetStateAction<Vertex[]>>,
+    errorInfo: ErrorInfo,
+    setErrorInfo: React.Dispatch<React.SetStateAction<ErrorInfo>>
 }> = (
-    { selectedTool, vertices, setVertices }: { 
+    { selectedTool, vertices, setVertices, errorInfo, setErrorInfo }: { 
         selectedTool: string, 
         vertices: Vertex[], 
-        setVertices: React.Dispatch<React.SetStateAction<Vertex[]>> 
+        setVertices: React.Dispatch<React.SetStateAction<Vertex[]>>,
+        errorInfo: ErrorInfo,
+        setErrorInfo: React.Dispatch<React.SetStateAction<ErrorInfo>>
     }
 ) => {
     // Constants TODO: maybe make these variable some increase/decrease buttons
@@ -65,11 +69,11 @@ export const Paper: React.FC<{
     const [vertexIdCounter, setVertexIdCounter] = React.useState<number>(0);
     const [pointerPosition, setPointerPosition] = React.useState<
         {x: number, y: number}
-    >({x: 0, y: 0});
+    >({x: 0, y: 0}); // for edge preview (maybe this isn't needed...)
     
     /**
-     * Get the coordinates of the click event relative to the paper. This is used
-     * in pretty much all mouse events.
+     * Get the coordinates of the click event relative to the paper. This is 
+     * used in pretty much all mouse events.
      * @param e - The click event
      * @returns The coordinates of the click event relative to the paper
      */
@@ -130,10 +134,30 @@ export const Paper: React.FC<{
      * @param edge - The edge to remove
      */
     const removeEdge = (edge: Edge) => {
-        // for each edge that is being removed, update the endpoints to no longer
-        // have it in their incident edges list
-        edge.endpoint1.incidentEdges = edge.endpoint1.incidentEdges.filter(e => e !== edge);
-        edge.endpoint2.incidentEdges = edge.endpoint2.incidentEdges.filter(e => e !== edge);
+        // Remove the edge from the incidentEdges arrays
+        edge.endpoint1.incidentEdges = edge.endpoint1.incidentEdges
+            .filter(e => e !== edge);
+        edge.endpoint2.incidentEdges = edge.endpoint2.incidentEdges
+            .filter(e => e !== edge);
+        
+        // Remove the vertices from each other's neighboringVertices arrays
+        edge.endpoint1.neighboringVertices = edge.endpoint1.neighboringVertices
+            .filter(v => v !== edge.endpoint2);
+        edge.endpoint2.neighboringVertices = edge.endpoint2.neighboringVertices
+            .filter(v => v !== edge.endpoint1);
+        
+        // Force a re-render of vertices
+        setVertices([...vertices]);
+        
+        // remove the edge from list of intersecting edges (if it is there)
+        setErrorInfo(prev => ({
+            ...prev,
+            intersectingEdges: prev.intersectingEdges.filter(
+                pair => pair[0] !== edge && pair[1] !== edge
+            )
+        }));
+
+        // remove the edge from the list of edges
         setEdges(prev => prev.filter(e => e !== edge));
     };
 
@@ -172,7 +196,9 @@ export const Paper: React.FC<{
             }
             
             // remove said vertices
-            return prev.filter(v => Math.hypot(v.x - x, v.y - y) > 1.1 * VERTEX_RADIUS);
+            return prev.filter(
+                v => Math.hypot(v.x - x, v.y - y) > 1.1 * VERTEX_RADIUS
+            );
         });
     };
 
@@ -249,20 +275,24 @@ export const Paper: React.FC<{
                 firstEndpoint === vertex || 
                 firstEndpoint.neighboringVertices.includes(vertex)
             ){
+                console.log("tried to add an existing edge")
                 // cancel making an edge if we click the same vertex twice or 
                 // try to make an existing edge.
                 setFirstEndpoint(null);
-            } else if (firstEndpoint !== vertex){
-                // add edge to the list of edges
+            } else if (firstEndpoint !== vertex){ // add edge
+                // add the edge to the list of edges
                 const newEdge = {endpoint1: firstEndpoint, endpoint2: vertex};
                 setEdges(prev => [...prev, newEdge]);
                 setFirstEndpoint(null);
-                // also, update the list of neighboring vertices and incident 
-                // edges
+
+                // update the list of neighboring vertices and incident edges
                 firstEndpoint.neighboringVertices.push(vertex);
                 vertex.neighboringVertices.push(firstEndpoint);
                 firstEndpoint.incidentEdges.push(newEdge);
                 vertex.incidentEdges.push(newEdge);
+
+                // validate the edge
+                validateEdge(newEdge);
             }
         }
     }
@@ -357,19 +387,16 @@ export const Paper: React.FC<{
 
         // Update vertex position if one is being dragged
         if (draggingVertex.vertex && selectedTool === "move-vertex"){
-            setVertices((prev: Vertex[]) => {
+            setVertices((prev: Vertex[]) => { // move vertex
                 const vertices = [...prev];
-                if (!draggingVertex.vertex){
-                    return vertices;
+                if (!draggingVertex.vertex) return vertices;
+                draggingVertex.vertex.x = x - draggingVertex.offsetX;
+                draggingVertex.vertex.y = y - draggingVertex.offsetY;
+
+                // see that no incident edges begin to intersect other edges
+                for (const edge of draggingVertex.vertex.incidentEdges){
+                    validateEdge(edge);
                 }
-                const vertexBeingDragged = vertices.find(
-                    v => v === draggingVertex.vertex
-                );
-                if (!vertexBeingDragged) {
-                    return vertices;
-                }
-                vertexBeingDragged.x = x - draggingVertex.offsetX;
-                vertexBeingDragged.y = y - draggingVertex.offsetY;
                 return vertices;
             });
         }
@@ -431,6 +458,188 @@ export const Paper: React.FC<{
         };
     }, [firstEndpoint]); // Only re-add listener when firstEndpoint changes
 
+    /**
+     * Check if an edge intersects with any other edge. If it does, add the 
+     * intersecting edge pair to the list of intersecting edges.
+     * @param edge - The edge to check.
+     */
+    function validateEdge(edge: Edge){
+        // First remove any existing intersections involving this edge
+        setErrorInfo(prevInfo => {
+            const filteredIntersections = prevInfo.intersectingEdges.filter(
+                pair => pair[0] !== edge && pair[1] !== edge
+            );
+            
+            // Find new intersections for this edge
+            const newIntersections: Edge[][] = [];
+            const edgeId = Math.min(edge.endpoint1.id, edge.endpoint2.id);
+            
+            for (const otherEdge of edges){
+                if (otherEdge === edge) continue;
+                if (!theseEdgesIntersect(edge, otherEdge)) continue;
+                
+                const otherEdgeId = Math.min(
+                    otherEdge.endpoint1.id, 
+                    otherEdge.endpoint2.id
+                );
+                
+                const intersectingEdgePair = (edgeId < otherEdgeId) ? 
+                    [edge, otherEdge] : [otherEdge, edge];
+                    
+                newIntersections.push(intersectingEdgePair);
+            }
+            
+            // Return updated error info with both existing and new 
+            // intersections
+            return {
+                ...prevInfo,
+                intersectingEdges: [...filteredIntersections, ...newIntersections]
+            };
+        });
+    }
+    
+
+    /**
+     * Check if two edges intersect.
+     * @param edge1 - The first edge.
+     * @param edge2 - The second edge.
+     * @returns True if the edges intersect, false otherwise.
+     */
+    function theseEdgesIntersect(edge1: Edge, edge2: Edge): boolean {
+        // if the edges share an endpoint, they don't intersect
+        if (
+            edge1.endpoint1 === edge2.endpoint1 
+            || edge1.endpoint1 === edge2.endpoint2 
+            || edge1.endpoint2 === edge2.endpoint1 
+            || edge1.endpoint2 === edge2.endpoint2
+        ){
+            return false;
+        }
+        
+        // Extract coordinates from edges
+        const [x1, y1] = [edge1.endpoint1.x, edge1.endpoint1.y];
+        const [x2, y2] = [edge1.endpoint2.x, edge1.endpoint2.y];
+        
+        const [x3, y3] = [edge2.endpoint1.x, edge2.endpoint1.y];
+        const [x4, y4] = [edge2.endpoint2.x, edge2.endpoint2.y];
+        
+        // Calculate determinants
+        const denominator = ((y4 - y3) * (x2 - x1)) - ((x4 - x3) * (y2 - y1));
+        
+        // If lines are parallel (denominator is 0), they don't intersect
+        if (denominator === 0) return false;
+        
+        const ua = (((x4 - x3) * (y1 - y3)) - ((y4 - y3) * (x1 - x3))) / denominator;
+        const ub = (((x2 - x1) * (y1 - y3)) - ((y2 - y1) * (x1 - x3))) / denominator;
+        
+        // Check if intersection point is within both line segments
+        return (ua >= 0 && ua <= 1) && (ub >= 0 && ub <= 1);
+    }
+
+    /**
+     * Identify vertices with degree less than 2, and update
+     * errorInfo.lowDegreeVertices with the list of such vertices.
+     */
+    function validateVertices() {
+        // Find vertices with degree less than 2
+        const lowDegreeVertices = vertices.filter(v => v.incidentEdges.length < 2);
+        
+        // Update error info with the new list of low degree vertices
+        setErrorInfo(prevErrorInfo => ({
+            ...prevErrorInfo,
+            lowDegreeVertices: lowDegreeVertices,
+        }));
+    }
+
+    // Add useEffect to validate vertices whenever vertices or edges change
+    React.useEffect(() => {
+        validateVertices();
+    }, [vertices, edges]);
+
+
+    /**
+     * Render a small red triangle centered at every vertex in
+     * errorInfo.lowDegreeVertices
+     */
+    const renderLowDegreeVerticesWarning = () => {
+        // Triangle size relative to vertex radius
+        const triangleSize = VERTEX_RADIUS * 3.5;
+        
+        return (
+            <>
+                {errorInfo.lowDegreeVertices.map((vertex) => {
+                    // Calculate the points for an equilateral triangle centered at the vertex
+                    const points = [
+                        `${vertex.x},${vertex.y - triangleSize}`, // Top point
+                        `${vertex.x - triangleSize * 0.866},${vertex.y + triangleSize * 0.5}`, // Bottom left
+                        `${vertex.x + triangleSize * 0.866},${vertex.y + triangleSize * 0.5}`  // Bottom right
+                    ].join(' ');
+                    
+                    return (
+                        <polygon
+                            key={`warning-${vertex.id}`}
+                            points={points}
+                            fill="red"
+                            opacity="0.7"
+                            stroke="none"
+                        />
+                    );
+                })}
+            </>
+        );
+    };
+
+    /**
+     * Render a small red triangle centered at the intersection of every pair of 
+     * edges in errorInfo.intersectingEdges
+     */
+    const renderIntersectingEdgesWarning = () => {
+        // X mark size relative to vertex radius
+        const xSize = VERTEX_RADIUS * 3;
+        
+        return (
+            <>
+                {errorInfo.intersectingEdges.map((edgePair, index) => {
+                    // Get the coordinates of the two edges
+                    const [edge1, edge2] = edgePair;
+                    const [x1, y1] = [edge1.endpoint1.x, edge1.endpoint1.y];
+                    const [x2, y2] = [edge1.endpoint2.x, edge1.endpoint2.y];
+                    const [x3, y3] = [edge2.endpoint1.x, edge2.endpoint1.y];
+                    const [x4, y4] = [edge2.endpoint2.x, edge2.endpoint2.y];
+                    
+                    // Calculate the intersection point
+                    const denominator = ((y4 - y3) * (x2 - x1)) - ((x4 - x3) * (y2 - y1));
+                    const ua = (((x4 - x3) * (y1 - y3)) - ((y4 - y3) * (x1 - x3))) / denominator;
+                    
+                    const intersectionX = x1 + ua * (x2 - x1);
+                    const intersectionY = y1 + ua * (y2 - y1);
+                    
+                    // Return an X mark at the intersection point
+                    return (
+                        <g key={`intersection-${index}`}>
+                            <line 
+                                x1={intersectionX - xSize/2} 
+                                y1={intersectionY - xSize/2}
+                                x2={intersectionX + xSize/2} 
+                                y2={intersectionY + xSize/2}
+                                stroke="red"
+                                strokeWidth={EDGE_WIDTH}
+                            />
+                            <line 
+                                x1={intersectionX - xSize/2} 
+                                y1={intersectionY + xSize/2}
+                                x2={intersectionX + xSize/2} 
+                                y2={intersectionY - xSize/2}
+                                stroke="red"
+                                strokeWidth={EDGE_WIDTH}
+                            />
+                        </g>
+                    );
+                })}
+            </>
+        );
+    };
+
     return (
         <svg 
             id="paper"
@@ -450,6 +659,8 @@ export const Paper: React.FC<{
                 stroke="black" 
                 strokeWidth={PAPER_BORDER_WIDTH} 
             />
+            {renderLowDegreeVerticesWarning()}
+            {renderIntersectingEdgesWarning()}
             {renderEdges()}
             {renderPreviewEdge()}
             {renderVertices()}

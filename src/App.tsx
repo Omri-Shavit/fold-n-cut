@@ -1,11 +1,15 @@
 import "./App.css";
 import LeftPanel from "./leftPanel";
-import { Paper } from "./paper";
+import { Edge, Paper } from "./paper";
 import React, { useState } from 'react';
 import ErrorIndicator from './ErrorIndicator';
 
 import { Vertex } from "./paper";
 import { ErrorInfo } from "./ErrorIndicator";
+
+const header = (
+    <header>Fold N' Cut</header>
+);
 
 const footer = (
     <footer>
@@ -21,27 +25,30 @@ const footer = (
 );
 
 const App: React.FC = () => {
+    // state shared between components
     const [selectedTool, setSelectedTool] = useState<string>("add-vertex");
     const [vertices, setVertices] = useState<Vertex[]>([]);
     const [errorInfo, setErrorInfo] = useState<ErrorInfo>({
-        errorCount: 0,
-        errorMessage: ""
+        viewErrorIndicator: true,
+        lowDegreeVertices: [] as Vertex[],
+        intersectingEdges: [] as Edge[][]
     });
 
     return (
         <div className="app">
-            <header>Fold N' Cut</header>
-            <ErrorIndicator errorInfo={errorInfo} setErrorInfo={setErrorInfo} />
+            {header}
+            <ErrorIndicator 
+                errorInfo={errorInfo} 
+            />
             <LeftPanel
-                selectedTool={selectedTool}
-                setSelectedTool={setSelectedTool}
+                selectedTool={selectedTool} setSelectedTool={setSelectedTool}
                 vertexCount={vertices.length}
             />
             <div className="main-content" id="mainContent">
                 <Paper
                     selectedTool={selectedTool}
-                    vertices={vertices}
-                    setVertices={setVertices}
+                    vertices={vertices} setVertices={setVertices}
+                    errorInfo={errorInfo} setErrorInfo={setErrorInfo}
                 />
             </div>
             {footer}

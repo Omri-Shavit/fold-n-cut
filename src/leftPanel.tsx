@@ -76,7 +76,7 @@ const verticesRow = (
 
 const edgesRow = (
     { selectedTool, setSelectedTool, vertexCount }:
-        { selectedTool: string, setSelectedTool: (tool: string) => void, vertexCount: number }
+    { selectedTool: string, setSelectedTool: (tool: string) => void, vertexCount: number }
 ) => {
     const disabled = vertexCount < 2;
 
