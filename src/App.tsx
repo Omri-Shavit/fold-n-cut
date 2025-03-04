@@ -1,11 +1,12 @@
 import "./App.css";
 import LeftPanel from "./leftPanel";
 import { Edge, Paper } from "./paper";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ErrorIndicator from './ErrorIndicator';
 
 import { Vertex } from "./paper";
 import { ErrorInfo } from "./ErrorIndicator";
+import { useFncStateManager } from './fncStateManager';
 
 const header = (
     <header>Fold N' Cut</header>
@@ -34,6 +35,14 @@ const App: React.FC = () => {
         lowDegreeVertices: [] as Vertex[],
         intersectingEdges: [] as Edge[][]
     });
+    
+    // Initialize the state manager with our state
+    useFncStateManager(vertices, edges, setVertices, setEdges);
+    
+    // Log welcome message only once on component mount
+    useEffect(() => {
+        console.log("Fold N' Cut implementation created by Omri Shavit (2025)");
+    }, []);
     
     return (
         <div className="app">
