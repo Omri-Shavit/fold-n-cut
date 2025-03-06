@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import '@fortawesome/fontawesome-free/css/all.min.css';
+import { HistoryManager } from "./history";
 
 const hotkeyMap = {
     "add-vertex": "A",
@@ -9,14 +10,12 @@ const hotkeyMap = {
     "redo": "Ctrl+Shift+Z"
 };
 
-function undo() {
-    // TODO: Implement undo
-    console.log("Undo action triggered");
+function undo(historyManagerRef: React.RefObject<HistoryManager>) {
+    historyManagerRef.current?.undo();
 }
 
-function redo() {
-    // TODO: Implement redo
-    console.log("Redo action triggered");
+function redo(historyManagerRef: React.RefObject<HistoryManager>) {
+    historyManagerRef.current?.redo();
 }
 
 const verticesRow = (
@@ -105,24 +104,43 @@ const edgesRow = (
     );
 }
 
-const undoRedoRow = () => {
+const undoRedoRow = (
+    { historyManagerRef }:
+    { historyManagerRef: React.RefObject<HistoryManager> }
+) => {
+    // Check if undo/redo is possible
+    const canUndo = historyManagerRef.current?.canUndo() || false;
+    const canRedo = historyManagerRef.current?.canRedo() || false;
+    
     return (
         <div className="button-row">
             <div className="buttons">
-                <button className="tooltip-container" onClick={undo}>
+                <button 
+                    className={`tooltip-container ${!canUndo ? "disabled" : ""}`} 
+                    onClick={() => undo(historyManagerRef)}
+                    disabled={!canUndo}
+                >
                     <i className="fas fa-undo"></i>
                     <span className="tooltip">
                         Undo
                         <br />
                         <strong>Hotkey: {hotkeyMap["undo"]}</strong>
+                        {!canUndo && <br />}
+                        {!canUndo && <span>Nothing to undo</span>}
                     </span>
                 </button>
-                <button className="tooltip-container" onClick={redo}>
+                <button 
+                    className={`tooltip-container ${!canRedo ? "disabled" : ""}`} 
+                    onClick={() => redo(historyManagerRef)}
+                    disabled={!canRedo}
+                >
                     <i className="fas fa-redo"></i>
                     <span className="tooltip">
                         Redo
                         <br />
                         <strong>Hotkey: {hotkeyMap["redo"]}</strong>
+                        {!canRedo && <br />}
+                        {!canRedo && <span>Nothing to redo</span>}
                     </span>
                 </button>
             </div>
@@ -134,10 +152,11 @@ interface LeftPanelProps {
     selectedTool: string;
     setSelectedTool: (tool: string) => void;
     vertexCount: number;
+    historyManagerRef: React.RefObject<HistoryManager>;
 }
 
 const LeftPanel: React.FC<LeftPanelProps> = (
-    { selectedTool, setSelectedTool, vertexCount }
+    { selectedTool, setSelectedTool, vertexCount, historyManagerRef }
 ) => {
     const [panelCollapsed, setPanelCollapsed] = useState(false);
 
@@ -158,14 +177,14 @@ const LeftPanel: React.FC<LeftPanelProps> = (
             // Handle Ctrl+Z for undo
             if (e.ctrlKey && !e.shiftKey && key === 'Z') {
                 e.preventDefault();
-                undo();
+                undo(historyManagerRef);
                 return;
             }
 
             // Handle Ctrl+Shift+Z for redo
             if (e.ctrlKey && e.shiftKey && key === 'Z') {
                 e.preventDefault();
-                redo();
+                redo(historyManagerRef);
                 return;
             }
 
@@ -197,7 +216,7 @@ const LeftPanel: React.FC<LeftPanelProps> = (
     return (
         <div className="container">
             <div className={`side-panel ${panelCollapsed ? "collapsed" : ""}`} id="sidePanel">
-                {undoRedoRow()}
+                {undoRedoRow({ historyManagerRef })}
                 {verticesRow({ selectedTool, setSelectedTool })}
                 {edgesRow({ selectedTool, setSelectedTool, vertexCount })}
             </div>

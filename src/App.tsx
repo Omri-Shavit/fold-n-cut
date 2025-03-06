@@ -1,8 +1,9 @@
 import "./App.css";
 import LeftPanel from "./LeftPanel";
 import { Edge, Paper } from "./Paper";
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import ErrorIndicator from './ErrorIndicator';
+import { HistoryManager } from "./history";
 
 import { Vertex } from "./Paper";
 import { ErrorInfo } from "./ErrorIndicator";
@@ -34,6 +35,9 @@ const App: React.FC = () => {
         lowDegreeVertices: [] as Vertex[],
         intersectingEdges: [] as Edge[][]
     });
+
+    // for undo / redo
+    const historyManagerRef = useRef<HistoryManager>(new HistoryManager(setEdges, setVertices));
     
     return (
         <div className="app">
@@ -44,12 +48,14 @@ const App: React.FC = () => {
             <LeftPanel
                 selectedTool={selectedTool} setSelectedTool={setSelectedTool}
                 vertexCount={vertices.length}
+                historyManagerRef={historyManagerRef}
             />
             <Paper
                 selectedTool={selectedTool}
                 vertices={vertices} setVertices={setVertices}
                 edges={edges} setEdges={setEdges}
                 errorInfo={errorInfo} setErrorInfo={setErrorInfo}
+                historyManagerRef={historyManagerRef}
             />
             {footer}
         </div>

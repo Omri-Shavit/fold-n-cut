@@ -165,11 +165,24 @@ footer {
   transition: background-color 0.15s ease-in-out;
 }
 
-/* Add these styles for disabled buttons */
-.btn.disabled {
+.btn.disabled, button.disabled {
   background-color: #e9ecef;
   color: #6c757d;
-  border-color: #ced4da;
+  opacity: 0.65;
+}
+
+.btn.disabled:hover, button.disabled:hover {
+  background-color: #e9ecef;
+}
+
+button:disabled, .btn-check:disabled + .btn, .btn-check[disabled] + .btn {
+  background-color: #e9ecef;
+  color: #6c757d;
+  opacity: 0.65;
+}
+
+button:disabled:hover, .btn-check:disabled + .btn:hover, .btn-check[disabled] + .btn:hover {
+  background-color: #e9ecef;
 }
 
 /* Make sure the tooltip still shows even when button is disabled */

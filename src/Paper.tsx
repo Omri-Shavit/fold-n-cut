@@ -6,12 +6,12 @@
 
 import React from 'react';
 import { ErrorInfo } from './ErrorIndicator';
+import { HistoryManager } from './history';
 export type Vertex = {
     x: number;
     y: number;
     incidentEdges: Edge[];
     neighboringVertices: Vertex[];
-    selected: boolean;
 }
 
 /**
@@ -37,13 +37,14 @@ export type Edge = {
  * Props for the Paper component
  */
 type PaperProps = {
-    selectedTool: string, 
-    vertices: Vertex[], 
+    selectedTool: string,
+    vertices: Vertex[],
     setVertices: React.Dispatch<React.SetStateAction<Vertex[]>>,
     edges: Edge[],
     setEdges: React.Dispatch<React.SetStateAction<Edge[]>>,
     errorInfo: ErrorInfo,
-    setErrorInfo: React.Dispatch<React.SetStateAction<ErrorInfo>>
+    setErrorInfo: React.Dispatch<React.SetStateAction<ErrorInfo>>,
+    historyManagerRef: React.RefObject<HistoryManager>
 }
 
 /**
@@ -52,29 +53,30 @@ type PaperProps = {
  * @returns The paper component.
  */
 export const Paper: React.FC<PaperProps> = ({
-    selectedTool, 
-    vertices, 
-    setVertices, 
-    edges, 
-    setEdges, 
-    errorInfo, 
-    setErrorInfo
+    selectedTool,
+    vertices,
+    setVertices,
+    edges,
+    setEdges,
+    errorInfo,
+    setErrorInfo,
+    historyManagerRef
 }) => {
     // Constants TODO: maybe make these variable some increase/decrease buttons
     const PAPER_BORDER_WIDTH: number = 0.01;
     const EDGE_WIDTH: number = 0.005;
     const VERTEX_RADIUS = 0.005;
-    
+
     const [draggingVertex, setDraggingVertex] = React.useState<dragVertexState>(
-        {vertex: null, offsetX: 0, offsetY: 0}
+        { vertex: null, offsetX: 0, offsetY: 0 }
     );
     const [firstEndpoint, setFirstEndpoint] = React.useState<Vertex | null>(
         null
     );
     const [pointerPosition, setPointerPosition] = React.useState<
-        {x: number, y: number}
-    >({x: 0, y: 0}); // for edge preview (maybe this isn't needed...)
-    
+        { x: number, y: number }
+    >({ x: 0, y: 0 }); // for edge preview (maybe this isn't needed...)
+
     /**
      * Get the coordinates of the click event relative to the paper. This is 
      * used in pretty much all mouse events.
@@ -98,10 +100,17 @@ export const Paper: React.FC<PaperProps> = ({
             x,
             y,
             incidentEdges: [],
-            neighboringVertices: [],
-            selected: false
+            neighboringVertices: []
         };
-        setVertices(prev => [...prev, newVertex]);
+        setVertices((prev: Vertex[]) => {
+            const updatedVertices = [...prev, newVertex];
+            historyManagerRef.current?.saveState(
+                updatedVertices,
+                edges,
+                "added a vertex"
+            );
+            return updatedVertices;
+        });
     };
 
     /**
@@ -114,20 +123,20 @@ export const Paper: React.FC<PaperProps> = ({
     const distanceToEdge = (x: number, y: number, edge: Edge): number => {
         const { x: x1, y: y1 } = edge.endpoint1;
         const { x: x2, y: y2 } = edge.endpoint2;
-        
+
         // Calculate the length of the edge
         const lineLength = Math.hypot(x2 - x1, y2 - y1);
-        
+
         if (lineLength === 0) return Math.hypot(x - x1, y - y1);
-        
+
         // Calculate the distance from the point to the line
         const t = Math.max(0, Math.min(
-            1, 
+            1,
             ((x - x1) * (x2 - x1) + (y - y1) * (y2 - y1)) / (lineLength * lineLength)
         ));
         const projX = x1 + t * (x2 - x1);
         const projY = y1 + t * (y2 - y1);
-        
+
         return Math.hypot(x - projX, y - projY);
     };
 
@@ -135,22 +144,22 @@ export const Paper: React.FC<PaperProps> = ({
      * Remove an edge from the paper.
      * @param edge - The edge to remove
      */
-    const removeEdge = (edge: Edge) => {
+    const removeEdge = (edge: Edge, saveState: boolean = true) => {
         // Remove the edge from the incidentEdges arrays
         edge.endpoint1.incidentEdges = edge.endpoint1.incidentEdges
             .filter(e => e !== edge);
         edge.endpoint2.incidentEdges = edge.endpoint2.incidentEdges
             .filter(e => e !== edge);
-        
+
         // Remove the vertices from each other's neighboringVertices arrays
         edge.endpoint1.neighboringVertices = edge.endpoint1.neighboringVertices
             .filter(v => v !== edge.endpoint2);
         edge.endpoint2.neighboringVertices = edge.endpoint2.neighboringVertices
             .filter(v => v !== edge.endpoint1);
-        
-        // Force a re-render of vertices
+
+        // Update the vertices
         setVertices([...vertices]);
-        
+
         // remove the edge from list of intersecting edges (if it is there)
         setErrorInfo(prev => ({
             ...prev,
@@ -160,7 +169,17 @@ export const Paper: React.FC<PaperProps> = ({
         }));
 
         // remove the edge from the list of edges
-        setEdges(prev => prev.filter(e => e !== edge));
+        setEdges((prev: Edge[]) => {
+            const updatedEdges = prev.filter(e => e !== edge);
+            if (saveState) {
+                historyManagerRef.current?.saveState(
+                    vertices,
+                    updatedEdges,
+                    "removed an edge"
+                );
+            }
+            return updatedEdges;
+        });
     };
 
     /**
@@ -170,8 +189,8 @@ export const Paper: React.FC<PaperProps> = ({
      */
     const removeNearbyEdges = (x: number, y: number) => {
         const EDGE_REMOVAL_THRESHOLD = 2 * EDGE_WIDTH;
-        for (const edge of edges){
-            if (distanceToEdge(x, y, edge) < EDGE_REMOVAL_THRESHOLD){
+        for (const edge of edges) {
+            if (distanceToEdge(x, y, edge) < EDGE_REMOVAL_THRESHOLD) {
                 removeEdge(edge);
             }
         }
@@ -185,22 +204,32 @@ export const Paper: React.FC<PaperProps> = ({
     const removeNearbyVertices = (x: number, y: number) => {
         setVertices((prev: Vertex[]) => {
             // Get the list of vertices we're about to remove
-            const verticesToRemove = prev.filter(v => 
+            const verticesToRemove = prev.filter(v =>
                 Math.hypot(v.x - x, v.y - y) <= 1.1 * VERTEX_RADIUS
             );
-            
-            // remove any edges that have an endpoint due for removal
-            for (const edge of edges){
-                if (verticesToRemove.includes(edge.endpoint1) 
-                    || verticesToRemove.includes(edge.endpoint2)){
-                    removeEdge(edge);
-                }
+
+            // also remove any edges that have an endpoint due for removal
+            const edgesToRemove = edges.filter(e =>
+                verticesToRemove.includes(e.endpoint1)
+                || verticesToRemove.includes(e.endpoint2)
+            );
+            const updatedEdges = edges.filter(e =>
+                !edgesToRemove.includes(e)
+            );
+            for (const edge of edgesToRemove) {
+                removeEdge(edge, false);
             }
-            
-            // remove said vertices
-            return prev.filter(
+            const updatedVertices = prev.filter(
                 v => Math.hypot(v.x - x, v.y - y) > 1.1 * VERTEX_RADIUS
             );
+            if (updatedVertices.length !== prev.length) {
+                historyManagerRef.current?.saveState(
+                    updatedVertices,
+                    updatedEdges,
+                    "removed a vertex"
+                );
+            }
+            return updatedVertices;
         });
     };
 
@@ -215,7 +244,7 @@ export const Paper: React.FC<PaperProps> = ({
     const handleClick = (e: React.MouseEvent<SVGSVGElement>) => {
         const { x, y } = getClickCoordinates(e);
         if (e.button === 0) { // Left click
-            if (selectedTool === "add-vertex") {
+            if (selectedTool === "add-vertex") { // add a vertex
                 addVertex(x, y);
             }
         } else if (e.button === 2) { // Right click
@@ -253,10 +282,10 @@ export const Paper: React.FC<PaperProps> = ({
      * @param vertex - The vertex that was clicked on
      */
     const handleMouseDownOnVertex = (
-        e: React.MouseEvent<SVGCircleElement>, 
+        e: React.MouseEvent<SVGCircleElement>,
         vertex: Vertex
     ) => {
-        if (selectedTool === "move-vertex"){
+        if (selectedTool === "move-vertex") {
             const svg = e.currentTarget.parentElement;
             if (!svg) return;
             const svgBB = svg.getBoundingClientRect();
@@ -267,24 +296,32 @@ export const Paper: React.FC<PaperProps> = ({
                 offsetX: x - vertex.x,
                 offsetY: y - vertex.y
             });
-        } else if (selectedTool === "add-edge" && e.button === 0){
-            if (vertex.incidentEdges.length === 2){ // clicked edge is saturated
+        } else if (selectedTool === "add-edge" && e.button === 0) {
+            if (vertex.incidentEdges.length === 2) { // clicked edge is saturated
                 // cancel making an edge
                 setFirstEndpoint(null);
-            } else if (firstEndpoint === null){ // no first endpoint selected yet
+            } else if (firstEndpoint === null) { // no first endpoint selected yet
                 if (vertex.incidentEdges.length < 2) setFirstEndpoint(vertex);
             } else if ( // trying to add a self loop or repeat an existing edge
-                firstEndpoint === vertex || 
+                firstEndpoint === vertex ||
                 firstEndpoint.neighboringVertices.includes(vertex)
-            ){
+            ) {
                 console.log("tried to add an existing edge")
                 // cancel making an edge if we click the same vertex twice or 
                 // try to make an existing edge.
                 setFirstEndpoint(null);
-            } else if (firstEndpoint !== vertex){ // add edge
+            } else if (firstEndpoint !== vertex) { // add edge
                 // add the edge to the list of edges
-                const newEdge = {endpoint1: firstEndpoint, endpoint2: vertex};
-                setEdges(prev => [...prev, newEdge]);
+                const newEdge = { endpoint1: firstEndpoint, endpoint2: vertex };
+                setEdges((prev: Edge[]) => {
+                    const updatedEdges = [...prev, newEdge];
+                    historyManagerRef.current?.saveState(
+                        vertices,
+                        updatedEdges,
+                        "added an edge"
+                    );
+                    return updatedEdges;
+                });
                 setFirstEndpoint(null);
 
                 // update the list of neighboring vertices and incident edges
@@ -298,7 +335,7 @@ export const Paper: React.FC<PaperProps> = ({
             }
         }
     }
-    
+
     /**
      * Render all of the vertices on the paper as svg circles. We also add an
      * onMouseDown event listener to each vertex that allows us to drag it 
@@ -312,20 +349,20 @@ export const Paper: React.FC<PaperProps> = ({
             //     - move-vertex => double arrow
             //     - add-edge => pointer
             let cursorStyle = "default";
-            if(selectedTool === "move-vertex"){
+            if (selectedTool === "move-vertex") {
                 cursorStyle = "move";
-            } else if (selectedTool === "add-edge"){
+            } else if (selectedTool === "add-edge") {
                 cursorStyle = "pointer";
             }
 
             return (
                 <circle
-                    key={index}
+                    key={`vertex-${index}`}
                     cx={vertex.x}
                     cy={vertex.y}
                     r={VERTEX_RADIUS}
                     fill="black"
-                    style={{cursor: cursorStyle}}
+                    style={{ cursor: cursorStyle }}
                     onMouseDown={(e) => handleMouseDownOnVertex(e, vertex)}
                 />
             )
@@ -337,11 +374,12 @@ export const Paper: React.FC<PaperProps> = ({
      * @returns The edges rendered on the paper.
      */
     const renderEdges = () => {
-        return edges.map((edge: Edge) => (<line 
+        return edges.map((edge: Edge, index: number) => (<line
+            key={`edge-${index}`}
             x1={edge.endpoint1.x}
-            y1={edge.endpoint1.y} 
-            x2={edge.endpoint2.x} 
-            y2={edge.endpoint2.y} 
+            y1={edge.endpoint1.y}
+            x2={edge.endpoint2.x}
+            y2={edge.endpoint2.y}
             stroke="black"
             strokeWidth={EDGE_WIDTH}
         />
@@ -355,13 +393,13 @@ export const Paper: React.FC<PaperProps> = ({
      */
     const renderPreviewEdge = () => {
         return (
-            (selectedTool === "add-edge" && firstEndpoint)?
-                <line 
+            (selectedTool === "add-edge" && firstEndpoint) ?
+                <line
                     key="preview-edge"
                     x1={firstEndpoint.x}
                     y1={firstEndpoint.y}
-                    x2={pointerPosition.x} 
-                    y2={pointerPosition.y} 
+                    x2={pointerPosition.x}
+                    y2={pointerPosition.y}
                     stroke="black"
                     strokeWidth={EDGE_WIDTH}
                 /> : <></>
@@ -378,17 +416,17 @@ export const Paper: React.FC<PaperProps> = ({
      */
     const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
         const { x, y } = getClickCoordinates(e);
-        
+
         // Update pointer position for edge preview
         setPointerPosition({ x, y });
-        
+
         if (e.buttons === 2) { // Right mouse button is being dragged
             removeNearbyVertices(x, y);
             removeNearbyEdges(x, y);
         }
 
         // Update vertex position if one is being dragged
-        if (draggingVertex.vertex && selectedTool === "move-vertex"){
+        if (draggingVertex.vertex && selectedTool === "move-vertex") {
             setVertices((prev: Vertex[]) => { // move vertex
                 const vertices = [...prev];
                 if (!draggingVertex.vertex) return vertices;
@@ -396,7 +434,7 @@ export const Paper: React.FC<PaperProps> = ({
                 draggingVertex.vertex.y = y - draggingVertex.offsetY;
 
                 // see that no incident edges begin to intersect other edges
-                for (const edge of draggingVertex.vertex.incidentEdges){
+                for (const edge of draggingVertex.vertex.incidentEdges) {
                     validateEdge(edge);
                 }
                 return vertices;
@@ -409,18 +447,23 @@ export const Paper: React.FC<PaperProps> = ({
         () => {
             const handleGlobalMouseUp = () => {
                 if (draggingVertex.vertex) {
-                    setDraggingVertex({vertex: null, offsetX: 0, offsetY: 0});
+                    setDraggingVertex({ vertex: null, offsetX: 0, offsetY: 0 });
+                    historyManagerRef.current?.saveState(
+                        vertices,
+                        edges,
+                        "moved a vertex"
+                    );
                 }
             };
-            
+
             // Add event listener to window
             window.addEventListener('mouseup', handleGlobalMouseUp);
-            
+
             // Clean up the event listener when component unmounts
             return () => {
                 window.removeEventListener('mouseup', handleGlobalMouseUp);
             };
-        }, 
+        },
         // Only re-add listener when draggingVertex.vertex changes
         [draggingVertex.vertex]
     );
@@ -430,8 +473,13 @@ export const Paper: React.FC<PaperProps> = ({
      * mouse button. (It's responsible for letting go of a vertex)
      */
     const handleMouseUp = () => {
-        if (draggingVertex.vertex){
-            setDraggingVertex({vertex: null, offsetX: 0, offsetY: 0});
+        if (draggingVertex.vertex) {
+            setDraggingVertex({ vertex: null, offsetX: 0, offsetY: 0 });
+            historyManagerRef.current?.saveState(
+                vertices,
+                edges,
+                "moved a vertex"
+            );
         }
     };
 
@@ -442,7 +490,7 @@ export const Paper: React.FC<PaperProps> = ({
             setFirstEndpoint(null);
         }
     }, [selectedTool, firstEndpoint]);
-    
+
     // Add useEffect to handle keyboard events (Escape key)
     React.useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -450,10 +498,10 @@ export const Paper: React.FC<PaperProps> = ({
                 setFirstEndpoint(null);
             }
         };
-        
+
         // Add event listener to window
         window.addEventListener('keydown', handleKeyDown);
-        
+
         // Clean up the event listener when component unmounts
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
@@ -465,28 +513,28 @@ export const Paper: React.FC<PaperProps> = ({
      * intersecting edge pair to the list of intersecting edges.
      * @param edge - The edge to check.
      */
-    function validateEdge(edge: Edge){
+    function validateEdge(edge: Edge) {
         // First remove any existing intersections involving this edge
         setErrorInfo(prevInfo => {
             const filteredIntersections = prevInfo.intersectingEdges.filter(
                 pair => pair[0] !== edge && pair[1] !== edge
             );
-            
+
             // Find new intersections for this edge
             const newIntersections: Edge[][] = [];
             const edgeIdx = edges.indexOf(edge);
 
-            for (let otherEdgeIdx = 0; otherEdgeIdx < edges.length; otherEdgeIdx++){
+            for (let otherEdgeIdx = 0; otherEdgeIdx < edges.length; otherEdgeIdx++) {
                 const otherEdge = edges[otherEdgeIdx];
                 if (otherEdge === edge) continue;
                 if (!theseEdgesIntersect(edge, otherEdge)) continue;
-                
-                const intersectingEdgePair = (edgeIdx < otherEdgeIdx) ? 
+
+                const intersectingEdgePair = (edgeIdx < otherEdgeIdx) ?
                     [edge, otherEdge] : [otherEdge, edge];
-                    
+
                 newIntersections.push(intersectingEdgePair);
             }
-            
+
             // Return updated error info with both existing and new 
             // intersections
             return {
@@ -495,7 +543,7 @@ export const Paper: React.FC<PaperProps> = ({
             };
         });
     }
-    
+
 
     /**
      * Check if two edges intersect.
@@ -506,30 +554,30 @@ export const Paper: React.FC<PaperProps> = ({
     function theseEdgesIntersect(edge1: Edge, edge2: Edge): boolean {
         // if the edges share an endpoint, they don't intersect
         if (
-            edge1.endpoint1 === edge2.endpoint1 
-            || edge1.endpoint1 === edge2.endpoint2 
-            || edge1.endpoint2 === edge2.endpoint1 
+            edge1.endpoint1 === edge2.endpoint1
+            || edge1.endpoint1 === edge2.endpoint2
+            || edge1.endpoint2 === edge2.endpoint1
             || edge1.endpoint2 === edge2.endpoint2
-        ){
+        ) {
             return false;
         }
-        
+
         // Extract coordinates from edges
         const [x1, y1] = [edge1.endpoint1.x, edge1.endpoint1.y];
         const [x2, y2] = [edge1.endpoint2.x, edge1.endpoint2.y];
-        
+
         const [x3, y3] = [edge2.endpoint1.x, edge2.endpoint1.y];
         const [x4, y4] = [edge2.endpoint2.x, edge2.endpoint2.y];
-        
+
         // Calculate determinants
         const denominator = ((y4 - y3) * (x2 - x1)) - ((x4 - x3) * (y2 - y1));
-        
+
         // If lines are parallel (denominator is 0), they don't intersect
         if (denominator === 0) return false;
-        
+
         const ua = (((x4 - x3) * (y1 - y3)) - ((y4 - y3) * (x1 - x3))) / denominator;
         const ub = (((x2 - x1) * (y1 - y3)) - ((y2 - y1) * (x1 - x3))) / denominator;
-        
+
         // Check if intersection point is within both line segments
         return (ua >= 0 && ua <= 1) && (ub >= 0 && ub <= 1);
     }
@@ -541,7 +589,7 @@ export const Paper: React.FC<PaperProps> = ({
     function validateVertices() {
         // Find vertices with degree less than 2
         const lowDegreeVertices = vertices.filter(v => v.incidentEdges.length < 2);
-        
+
         // Update error info with the new list of low degree vertices
         setErrorInfo(prevErrorInfo => ({
             ...prevErrorInfo,
@@ -562,7 +610,7 @@ export const Paper: React.FC<PaperProps> = ({
     const renderLowDegreeVerticesWarning = () => {
         // Triangle size relative to vertex radius
         const triangleSize = VERTEX_RADIUS * 3.5;
-        
+
         return (
             <>
                 {errorInfo.lowDegreeVertices.map((vertex, index) => {
@@ -572,10 +620,10 @@ export const Paper: React.FC<PaperProps> = ({
                         `${vertex.x - triangleSize * 0.866},${vertex.y + triangleSize * 0.5}`, // Bottom left
                         `${vertex.x + triangleSize * 0.866},${vertex.y + triangleSize * 0.5}`  // Bottom right
                     ].join(' ');
-                    
+
                     return (
                         <polygon
-                            key={`warning-low-degree-vertex-${index}`}
+                            key={`low-degree-vertex-warning-${index}`}
                             points={points}
                             fill="red"
                             opacity="0.7"
@@ -594,7 +642,7 @@ export const Paper: React.FC<PaperProps> = ({
     const renderIntersectingEdgesWarning = () => {
         // X mark size relative to vertex radius
         const xSize = VERTEX_RADIUS * 3;
-        
+
         return (
             <>
                 {errorInfo.intersectingEdges.map((edgePair, index) => {
@@ -604,30 +652,30 @@ export const Paper: React.FC<PaperProps> = ({
                     const [x2, y2] = [edge1.endpoint2.x, edge1.endpoint2.y];
                     const [x3, y3] = [edge2.endpoint1.x, edge2.endpoint1.y];
                     const [x4, y4] = [edge2.endpoint2.x, edge2.endpoint2.y];
-                    
+
                     // Calculate the intersection point
                     const denominator = ((y4 - y3) * (x2 - x1)) - ((x4 - x3) * (y2 - y1));
                     const ua = (((x4 - x3) * (y1 - y3)) - ((y4 - y3) * (x1 - x3))) / denominator;
-                    
+
                     const intersectionX = x1 + ua * (x2 - x1);
                     const intersectionY = y1 + ua * (y2 - y1);
-                    
+
                     // Return an X mark at the intersection point
                     return (
-                        <g key={`warning-intersecting-edges-${index}`}>
-                            <line 
-                                x1={intersectionX - xSize/2} 
-                                y1={intersectionY - xSize/2}
-                                x2={intersectionX + xSize/2} 
-                                y2={intersectionY + xSize/2}
+                        <g key={`intersection-warning-${index}`}>
+                            <line
+                                x1={intersectionX - xSize / 2}
+                                y1={intersectionY - xSize / 2}
+                                x2={intersectionX + xSize / 2}
+                                y2={intersectionY + xSize / 2}
                                 stroke="red"
                                 strokeWidth={EDGE_WIDTH}
                             />
-                            <line 
-                                x1={intersectionX - xSize/2} 
-                                y1={intersectionY + xSize/2}
-                                x2={intersectionX + xSize/2} 
-                                y2={intersectionY - xSize/2}
+                            <line
+                                x1={intersectionX - xSize / 2}
+                                y1={intersectionY + xSize / 2}
+                                x2={intersectionX + xSize / 2}
+                                y2={intersectionY - xSize / 2}
                                 stroke="red"
                                 strokeWidth={EDGE_WIDTH}
                             />
@@ -640,7 +688,7 @@ export const Paper: React.FC<PaperProps> = ({
 
     return (
         <div className="main-content" id="mainContent">
-            <svg 
+            <svg
                 id="paper"
                 width="80vmin"
                 height="80vmin"
@@ -651,19 +699,19 @@ export const Paper: React.FC<PaperProps> = ({
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
             >
-                <rect 
-                    width="1" 
-                    height="1" 
-                    fill="white" 
-                    stroke="black" 
-                    strokeWidth={PAPER_BORDER_WIDTH} 
+                <rect
+                    width="1"
+                    height="1"
+                    fill="white"
+                    stroke="black"
+                    strokeWidth={PAPER_BORDER_WIDTH}
                 />
                 {renderLowDegreeVerticesWarning()}
                 {renderIntersectingEdgesWarning()}
                 {renderEdges()}
                 {renderPreviewEdge()}
                 {renderVertices()}
-            </svg>  
+            </svg>
         </div>
     );
 };
