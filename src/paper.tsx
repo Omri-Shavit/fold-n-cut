@@ -357,6 +357,7 @@ export const Paper: React.FC<PaperProps> = ({
         return (
             (selectedTool === "add-edge" && firstEndpoint)?
                 <line 
+                    key="preview-edge"
                     x1={firstEndpoint.x}
                     y1={firstEndpoint.y}
                     x2={pointerPosition.x} 
@@ -564,7 +565,7 @@ export const Paper: React.FC<PaperProps> = ({
         
         return (
             <>
-                {errorInfo.lowDegreeVertices.map((vertex) => {
+                {errorInfo.lowDegreeVertices.map((vertex, index) => {
                     // Calculate the points for an equilateral triangle centered at the vertex
                     const points = [
                         `${vertex.x},${vertex.y - triangleSize}`, // Top point
@@ -574,6 +575,7 @@ export const Paper: React.FC<PaperProps> = ({
                     
                     return (
                         <polygon
+                            key={`warning-low-degree-vertex-${index}`}
                             points={points}
                             fill="red"
                             opacity="0.7"
@@ -595,7 +597,7 @@ export const Paper: React.FC<PaperProps> = ({
         
         return (
             <>
-                {errorInfo.intersectingEdges.map((edgePair) => {
+                {errorInfo.intersectingEdges.map((edgePair, index) => {
                     // Get the coordinates of the two edges
                     const [edge1, edge2] = edgePair;
                     const [x1, y1] = [edge1.endpoint1.x, edge1.endpoint1.y];
@@ -612,7 +614,7 @@ export const Paper: React.FC<PaperProps> = ({
                     
                     // Return an X mark at the intersection point
                     return (
-                        <g>
+                        <g key={`warning-intersecting-edges-${index}`}>
                             <line 
                                 x1={intersectionX - xSize/2} 
                                 y1={intersectionY - xSize/2}

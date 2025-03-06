@@ -1,10 +1,10 @@
 import "./App.css";
-import LeftPanel from "./leftPanel";
-import { Edge, Paper } from "./paper";
+import LeftPanel from "./LeftPanel";
+import { Edge, Paper } from "./Paper";
 import React, { useState } from 'react';
 import ErrorIndicator from './ErrorIndicator';
 
-import { Vertex } from "./paper";
+import { Vertex } from "./Paper";
 import { ErrorInfo } from "./ErrorIndicator";
 
 const header = (
@@ -38,8 +38,8 @@ const App: React.FC = () => {
     return (
         <div className="app">
             {header}
-            <ErrorIndicator 
-                errorInfo={errorInfo} 
+            <ErrorIndicator
+                errorInfo={errorInfo}
             />
             <LeftPanel
                 selectedTool={selectedTool} setSelectedTool={setSelectedTool}

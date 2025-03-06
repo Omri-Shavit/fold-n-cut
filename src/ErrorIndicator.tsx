@@ -1,5 +1,5 @@
 import React from 'react';
-import { Edge, Vertex } from './paper';
+import { Edge, Vertex } from './Paper';
 
 export type ErrorInfo = {
     viewErrorIndicator: boolean;
